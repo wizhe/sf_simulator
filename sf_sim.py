@@ -1,6 +1,6 @@
 import random
 import statistics
-from multiprocessing import pool
+from multiprocessing import Pool, cpu_count
 
 # Success rates (star increases)
 success_rates = {
@@ -124,11 +124,11 @@ boom_result =  {
 }
 
 # Build Cost Table, for quicker retrieval of costs
-def build_cost_table (item_level: int, max: int = 29):
-    cost_table = [0] * (max + 1)
+def build_cost_table (item_level: int, max_star: int = 29):
+    cost_table = [0] * (max_star + 1)
 
     # Stars 0-9, linear section
-    for star in range(0, min(10, max + 1)):
+    for star in range(0, min(10, max_star + 1)):
         x = star + 1
         cost_table[star] = 100 * round(10 + (item_level**3 * x)/2500)
 
@@ -157,72 +157,107 @@ def build_cost_table (item_level: int, max: int = 29):
     }
 
     for star, (x, y) in vals.items():
-        if star > max:
-          continue
+        if star > max_star:
+            continue
         cost_table[star] = 100 * round(10 + (item_level**3 * (x**2.7))/ y)
 
     return cost_table
 
 # Simulate Runs
-def simulate_runs(target=22, 
-                  start=0, 
-                  n_runs = 100, 
-                  item_level=150, 
-                  starcatch=False, 
-                  safeguard=False, 
-                  event_30_off=False, 
-                  event_30_boom_reduction=False):
-    total_cost = []
-    total_booms = []
-    cost_table = build_cost_table(item_level, target)
+def simulate_single_run(target, 
+                        start, 
+                        starcatch, 
+                        safeguard, 
+                        event_30_off, 
+                        event_30_boom_reduction,
+                        cost_table):
 
-    for _ in range(n_runs):
-        star = start
-        cost = 0
-        run_cost = 0
-        boom_count = 0
-        
-        # 30% Off Costs Event
-        event_discount = 0.3 if event_30_off else 0
-        
-        # 30% Boom Chance Reduction Event (multiplicative)
-        event_boom_reduction = 0.3 if event_30_boom_reduction else 0
-        
-        # Starcatching (+5% multiplicative success chance)
-        starcatch_bonus = 0.05 if starcatch else 0
-
-        while (star < target):
-            # Safeguard (Reduce boom chance to 0% but adds 200% cost, only up to 18th star)
-            if safeguard and 15 <= star < 18:
-                safeguard_boom_reduction = 1 # 100% reduction
-                safeguard_cost = 2 # 200% increase
-            else:
-                safeguard_cost = 0
-                safeguard_boom_reduction = 0
-
-            roll = random.randint(1,10000)/100
-            suc = success_rates[star] * (1 + starcatch_bonus)
-            boom = boom_rates[star] * (1 - event_boom_reduction) * (1 - safeguard_boom_reduction)
-            cost = cost_table[star] * (1 - event_discount) * (1 + safeguard_cost)
-
-            if roll <= suc: # Success
-                star += 1 # Star goes up
-            
-            elif ((star >= 15) and (roll > suc) and (roll <= suc+boom)): # Boom
-                star = boom_result[star]
-                boom_count += 1
-            
-            else: # Fail
-                pass # Star stays the same
-            
-            run_cost += cost
-        total_cost.append(run_cost)
-        total_booms.append(boom_count)
+    star = start
+    run_cost = 0
+    boom_count = 0
     
-    avg_cost = sum(total_cost)/n_runs
-    median_cost = statistics.median(total_cost)
-    avg_booms = sum(total_booms)/n_runs
-    median_booms = statistics.median(total_booms)
+    # 30% Off Costs Event
+    event_discount = 0.3 if event_30_off else 0
+    
+    # 30% Boom Chance Reduction Event (multiplicative)
+    event_boom_reduction = 0.3 if event_30_boom_reduction else 0
+    
+    # Starcatching (+5% multiplicative success chance)
+    starcatch_bonus = 0.05 if starcatch else 0
 
-    return int(avg_cost), int(median_cost), avg_booms, median_booms, total_cost
+    while (star < target):
+        # Safeguard (Reduce boom chance to 0% but adds 200% cost, only up to 18th star)
+        if safeguard and 15 <= star < 18:
+            safeguard_boom_reduction = 1 # 100% reduction
+            safeguard_cost = 2 # 200% increase
+        else:
+            safeguard_boom_reduction = 0
+            safeguard_cost = 0
+
+        roll = random.randint(1,10000)/100
+        suc = success_rates[star] * (1 + starcatch_bonus)
+        boom = boom_rates[star] * (1 - event_boom_reduction) * (1 - safeguard_boom_reduction)
+        cost = cost_table[star] * (1 - event_discount) * (1 + safeguard_cost)
+
+        if roll <= suc: # Success
+            star += 1 # Star goes up
+        
+        elif ((star >= 15) and (roll > suc) and (roll <= suc+boom)): # Boom
+            star = boom_result[star] # Star drops
+            boom_count += 1
+        
+        else: # Fail
+            pass # Star stays the same
+        
+        run_cost += cost
+
+    return run_cost, boom_count
+
+
+def simulate_runs_parallel(n_runs=10,**kwargs):
+
+    # Generate cost table once
+    cost_table = build_cost_table(kwargs["item_level"], kwargs["target"])
+
+    # Bundle args
+    args = [(kwargs["target"], kwargs["start"], 
+            kwargs["starcatch"], kwargs["safeguard"], 
+            kwargs["event_30_off"], kwargs["event_30_boom_reduction"], 
+            cost_table)
+            for _ in range(n_runs)
+            ] 
+    
+
+    with Pool(cpu_count()) as pool:
+        results = pool.starmap(simulate_single_run, args, chunksize=256)
+    
+    costs = [r[0] for r in results]
+    booms = [r[1] for r in results]
+
+    return {
+        "avg_cost": int(sum(costs)/n_runs),
+        "med_cost": int(statistics.median(costs)),
+        "avg_booms": sum(booms)/n_runs,
+        "med_booms": statistics.median(booms),
+        "costs": costs,
+        "booms": booms
+    }
+
+
+if __name__ == "__main__":
+    simulation = simulate_runs_parallel(
+        n_runs=1000,
+        target=27,
+        start=0,
+        item_level=150,
+        starcatch=True,
+        safeguard=False,
+        event_30_off=False,
+        event_30_boom_reduction=False
+    )
+
+    print("Average Cost:", simulation["avg_cost"])
+    print("Median Cost:", simulation["med_cost"])
+    print("Average Booms:", simulation["avg_booms"])
+    print("Median Booms:", simulation["med_booms"])
 
