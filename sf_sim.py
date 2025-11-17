@@ -172,38 +172,46 @@ def simulate_single_run(target,
                         event_30_boom_reduction,
                         cost_table):
 
+    # Made local
+    success = success_rates
+    boom_rate = boom_rates
+    boom_res = boom_result
+
     star = start
     run_cost = 0
     boom_count = 0
     
     # 30% Off Costs Event
-    event_discount = 0.3 if event_30_off else 0
+    event_discount_multiplier = 0.7 if event_30_off else 1.0
     
     # 30% Boom Chance Reduction Event (multiplicative)
-    event_boom_reduction = 0.3 if event_30_boom_reduction else 0
+    event_boom_reduction_multiplier = 0.7 if event_30_boom_reduction else 1.0
     
     # Starcatching (+5% multiplicative success chance)
-    starcatch_bonus = 0.05 if starcatch else 0
+    starcatch_multiplier = 1.05 if starcatch else 1.0
+
+
+    rand = random.random
 
     while (star < target):
         # Safeguard (Reduce boom chance to 0% but adds 200% cost, only up to 18th star)
         if safeguard and 15 <= star < 18:
-            safeguard_boom_reduction = 1 # 100% reduction
-            safeguard_cost = 2 # 200% increase
+            safeguard_boom_reduction_multiplier = 0 # 100% reduction
+            safeguard_cost_multiplier = 3.0 # 200% increase
         else:
-            safeguard_boom_reduction = 0
-            safeguard_cost = 0
+            safeguard_boom_reduction_multiplier = 1.0
+            safeguard_cost_multiplier = 1.0
 
-        roll = random.randint(1,10000)/100
-        suc = success_rates[star] * (1 + starcatch_bonus)
-        boom = boom_rates[star] * (1 - event_boom_reduction) * (1 - safeguard_boom_reduction)
-        cost = cost_table[star] * (1 - event_discount) * (1 + safeguard_cost)
+        roll = rand() * 100
+        suc = success[star] * starcatch_multiplier
+        boom = boom_rate[star] * event_boom_reduction_multiplier * safeguard_boom_reduction_multiplier
+        cost = cost_table[star] * event_discount_multiplier * safeguard_cost_multiplier
 
         if roll <= suc: # Success
             star += 1 # Star goes up
         
         elif ((star >= 15) and (roll > suc) and (roll <= suc+boom)): # Boom
-            star = boom_result[star] # Star drops
+            star = boom_res[star] # Star drops
             boom_count += 1
         
         else: # Fail
@@ -246,12 +254,12 @@ def simulate_runs_parallel(n_runs=10,**kwargs):
 
 if __name__ == "__main__":
     simulation = simulate_runs_parallel(
-        n_runs=1000,
-        target=27,
+        n_runs=10000,
+        target=22,
         start=0,
-        item_level=150,
+        item_level=250,
         starcatch=True,
-        safeguard=False,
+        safeguard=True,
         event_30_off=False,
         event_30_boom_reduction=False
     )
