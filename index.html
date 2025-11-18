@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Starforce Simulator</title>
+  </head>
+  <body>
+    <h1>Starforce Simulator</h1>
+    <label>
+      Item Level
+      <input id="item-level" type="number" value="150" min="1" max="300" step="1">
+    </label>
+    <label>
+      Start
+      <input id="start" type="number" value="0" min="0" max="29" step="1">
+    </label>
+    <label>
+      Target
+      <input id="target" type="number" value="22" min="1" max="30" step="1">
+    </label>
+    <label>
+      Number of Runs:
+      <input id="runs" type="number" value="1000" min="100" max="100000" step="100">
+    </label>
+    <label>
+      Starcatch
+      <input id="starcatch" type="checkbox" checked>
+    </label>
+    <label>
+      Safeguard
+      <input id="safeguard" type="checkbox">
+    </label>
+    <label>
+      30% Off
+      <input id="event-30-off" type="checkbox">
+    </label>
+    <label>
+      30% Boom Reduction
+      <input id="event-30-boom-red" type="checkbox">
+    </label>
+    <button id="simulate-button">Simulate</button>
+
+    <p id="avg-cost"></p>
+    <p id="median-cost"></p>
+    <p id="avg-booms"></p>
+    <p id="median-booms"></p>
+
+    <script src="main.js"></script>
+  </body>
+</html>
