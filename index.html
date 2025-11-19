@@ -3,47 +3,95 @@
   <head>
     <meta charset="UTF-8">
     <title>Starforce Simulator</title>
+    <link rel="stylesheet" href="index.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
   <body>
     <h1>Starforce Simulator</h1>
-    <label>
-      Item Level
-      <input id="item-level" type="number" value="150" min="1" max="300" step="1">
-    </label>
-    <label>
-      Start
-      <input id="start" type="number" value="0" min="0" max="29" step="1">
-    </label>
-    <label>
-      Target
-      <input id="target" type="number" value="22" min="1" max="30" step="1">
-    </label>
-    <label>
-      Number of Runs:
-      <input id="runs" type="number" value="1000" min="100" max="100000" step="100">
-    </label>
-    <label>
-      Starcatch
-      <input id="starcatch" type="checkbox" checked>
-    </label>
-    <label>
-      Safeguard
-      <input id="safeguard" type="checkbox">
-    </label>
-    <label>
-      30% Off
-      <input id="event-30-off" type="checkbox">
-    </label>
-    <label>
-      30% Boom Reduction
-      <input id="event-30-boom-red" type="checkbox">
-    </label>
-    <button id="simulate-button">Simulate</button>
+    <div class="outer">
+      <div class="container">
 
-    <p id="avg-cost"></p>
-    <p id="median-cost"></p>
-    <p id="avg-booms"></p>
-    <p id="median-booms"></p>
+        <!-- Left Card (Inputs) -->
+        <div class="card">
+          <div class="settings">
+            <h2>Settings</h2>
+
+            <label>
+              Item Level
+              <input id="item-level" type="number" value="150" min="1" max="300">
+            </label>
+
+            <label>
+              Start
+              <input id="start" type="number" value="0" min="0" max="29">
+            </label>
+
+            <label>
+              Target
+              <input id="target" type="number" value="22" min="1" max="30">
+            </label>
+
+            <label>
+              Number of Runs
+              <input id="runs" type="number" value="10000" min="100" max="100000">
+            </label>
+          </div>
+
+          <div class="settings">
+            <h2>Options</h2>
+
+            <label class="checkbox"><input id="starcatch" type="checkbox" checked> Starcatch</label>
+            <label class="checkbox"><input id="safeguard" type="checkbox"> Safeguard</label>
+            <label class="checkbox"><input id="event-30-off" type="checkbox"> 30% Off</label>
+            <label class="checkbox"><input id="event-30-boom-red" type="checkbox"> 30% Boom Reduction</label>
+          </div>
+
+          <button id="simulate-button">Simulate</button>
+        </div>
+
+        <!-- Middle Card (Costs) -->
+        <div>
+          <div class="card results costs">
+            <h2>Cost Results</h2>
+            <p id="avg-cost">Average Cost: </p>
+            <p id="median-cost">Median Cost: </p>
+            <p id="cost-range">Cost Range: </p>
+
+            <h2>Cost Distribution</h3>
+            <canvas id="cost-histogram" width="400" height="200"></canvas>
+
+            <h2>Cost Percentiles</h3>
+            <p id="p50">P50: </p>
+            <p id="p75">P75: </p>
+            <p id="p90">P90: </p>
+            <p id="p95">P95: </p>
+            <p id="p99">P99: </p>
+          </div>
+        </div>
+
+        <!-- Right Card (Booms) -->
+        <div>
+          <div class="card results booms">
+            <h2>Boom Results</h2>
+            <p id="avg-booms">Average Booms: </p>
+            <p id="median-booms">Median Booms: </p>
+            <p id="boom-range">Boom Range: </p>
+
+            <h2>Boom Count Distribution</h2>
+            <canvas id="boom-histogram" width="400" height="200"></canvas>
+
+            <h2>Boom Percentiles</h2>
+            <p id="boom-p50">P50: </p>
+            <p id="boom-p75">P75: </p>
+            <p id="boom-p90">P90: </p>
+            <p id="boom-p95">P95: </p>
+            <p id="boom-p99">P99: </p>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
 
     <script src="main.js"></script>
   </body>

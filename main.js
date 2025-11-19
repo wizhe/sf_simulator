@@ -117,6 +117,71 @@ const boomResult =  {
   29: 20,
 }
 
+function shortenNumber(num) {
+  if (num >= 1e9) return (num / 1e9).toFixed(1) + "B";
+  if (num >= 1e6) return (num / 1e6).toFixed(1) + "M";
+  if (num >= 1e3) return (num / 1e3).toFixed(1) + "K";
+  return num.toString();
+}
+
+let costHistogramChart = null;
+let boomHistogramChart = null;
+
+
+function getPercentile(sortedArray, p) {
+  const n = sortedArray.length;
+  if (n === 0) return 0;
+  const idx = Math.floor(p * (n - 1));
+  return sortedArray[idx];
+}
+
+function makeHistogram(data, nBins = 30) {
+  if (data.length === 0) {
+    return { labels: [], counts: [] };
+  }
+
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+
+  if (min === max) {
+    return {
+      labels: [min.toLocaleString()],
+      counts: [data.length],
+    };
+  }
+
+  const binSize = (max - min) / nBins;
+  const counts = new Array(nBins).fill(0);
+  const labels = [];
+
+  for (let i = 0; i < nBins; i++) {
+    const start = min + i * binSize;
+    const end = start + binSize;
+    labels.push(`${shortenNumber(Math.round(start))}–${shortenNumber(Math.round(end))}`);
+  }
+
+  for (const value of data) {
+    let idx = Math.floor((value - min) / binSize);
+    if (idx === nBins) idx = nBins - 1;
+    counts[idx]++;
+  }
+
+  return { labels, counts };
+}
+
+function makeDiscreteHistogram(data) {
+  const freq = {};
+  for (const v of data) {
+    freq[v] = (freq[v] || 0) + 1;
+  }
+  const labels = Object.keys(freq).map(Number).sort((a, b) => a - b);
+  const counts = labels.map(l => freq[l]);
+  return { labels: labels.map(String), counts };
+}
+
+
+
+
 function buildCostTable(itemLevel, maxStar) {
   const costTable = new Array(maxStar + 1).fill(0);
 
@@ -236,10 +301,116 @@ document.getElementById("simulate-button").addEventListener("click", () => {
 
   const results = simulateManyRuns(runs, itemLevel, target, start, starcatch, safeguard, event30Off, event30BoomRed);
 
-  document.getElementById("avg-cost").textContent = `Avg cost: ${results.avgCost.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
-  document.getElementById("median-cost").textContent = `Median cost: ${results.medCost.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
-  document.getElementById("avg-booms").textContent = `Avg booms: ${results.avgBooms.toFixed(2)}`;
-  document.getElementById("median-booms").textContent = `Median booms: ${results.medBooms}`;
+  // Basic stats
+  document.getElementById("avg-cost").textContent = `Average Cost: ${results.avgCost.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+  document.getElementById("median-cost").textContent = `Median Cost: ${results.medCost.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+  document.getElementById("avg-booms").textContent = `Average Booms: ${results.avgBooms.toFixed(2)}`;
+  document.getElementById("median-booms").textContent = `Median Booms: ${results.medBooms}`;
+
+  // Cost percentiles and range
+  const sortedCosts = [...results.costs].sort((a, b) => a - b);
+
+  const minCost = sortedCosts[0];
+  const maxCost = sortedCosts[sortedCosts.length - 1];
+  document.getElementById("cost-range").textContent = `Cost Range: ${minCost.toLocaleString("en-US", { maximumFractionDigits: 0 })} - ${maxCost.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+
+  const p50 = getPercentile(sortedCosts, 0.5);
+  const p75 = getPercentile(sortedCosts, 0.75);
+  const p90 = getPercentile(sortedCosts, 0.9);
+  const p95 = getPercentile(sortedCosts, 0.95);
+  const p99 = getPercentile(sortedCosts, 0.99);
+
+  document.getElementById("p50").textContent = `P50: ${p50.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+  document.getElementById("p75").textContent = `P75: ${p75.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+  document.getElementById("p90").textContent = `P90: ${p90.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+  document.getElementById("p95").textContent = `P95: ${p95.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+  document.getElementById("p99").textContent = `P99: ${p99.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+
+  // Cost Histogram
+  const { labels, counts } = makeHistogram(results.costs, 30);
+
+  const ctx = document.getElementById("cost-histogram").getContext("2d");
+
+  if (costHistogramChart) {
+    costHistogramChart.data.labels = labels;
+    costHistogramChart.data.datasets[0].data = counts;
+    costHistogramChart.update();
+  } else {
+    costHistogramChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Number of runs in cost range',
+          data: counts,
+          backgroundColor: '#E5AF24',
+          borderColor: '#C99718',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        scales: {
+          x: {
+            title: { display: true, text: 'Total cost per run' }
+          },
+          y: {
+            title: { display: true, text: 'Runs' }
+          }
+        }
+      }
+    });
+  }
+  // Boom percentiles and range
+  const sortedBooms = [...results.booms].sort((a, b) => a - b);
+
+  const minBooms = sortedBooms[0];
+  const maxBooms = sortedBooms[sortedBooms.length - 1];
+  document.getElementById("boom-range").textContent = `Boom Range: ${minBooms} - ${maxBooms}`;
+
+  const b50 = getPercentile(sortedBooms, 0.5);
+  const b75 = getPercentile(sortedBooms, 0.75);
+  const b90 = getPercentile(sortedBooms, 0.9);
+  const b95 = getPercentile(sortedBooms, 0.95);
+  const b99 = getPercentile(sortedBooms, 0.99);
+
+  document.getElementById("boom-p50").textContent = `P50: ${b50}`;
+  document.getElementById("boom-p75").textContent = `P75: ${b75}`;
+  document.getElementById("boom-p90").textContent = `P90: ${b90}`;
+  document.getElementById("boom-p95").textContent = `P95: ${b95}`;
+  document.getElementById("boom-p99").textContent = `P99: ${b99}`;
+
+  // Boom histogram
+  const boomHist = makeDiscreteHistogram(results.booms);
+  const boomCtx = document.getElementById("boom-histogram").getContext("2d");
+
+  if (boomHistogramChart) {
+    boomHistogramChart.data.labels = boomHist.labels;
+    boomHistogramChart.data.datasets[0].data = boomHist.counts;
+    boomHistogramChart.update();
+  } else {
+    boomHistogramChart = new Chart(boomCtx, {
+      type: 'bar',
+      data: {
+        labels: boomHist.labels,
+        datasets: [{
+          label: 'Number of runs with this number of booms',
+          data: boomHist.counts,
+          backgroundColor: '#A63D40',
+          borderColor: '#863234',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        scales: {
+          x: {
+            title: { display: true, text: 'Booms per run' }
+          },
+          y: {
+            title: { display: true, text: 'Runs' }
+          }
+        }
+      }
+    });
+  }
+
 });
-
-
