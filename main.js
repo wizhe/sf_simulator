@@ -300,14 +300,14 @@ document.getElementById("simulate-button").addEventListener("click", () => {
   const event30Off = document.getElementById("event-30-off").checked;
   const event30BoomRed = document.getElementById("event-30-boom-red").checked;
 
-  const results = simulateManyRuns(runs, itemLevel, target, start, starcatch, safeguard, event30Off, event30BoomRed);
-
   // Run limit check
   if (runs < 1 || runs > 100000) {
     error.style.display = "block";
     return;
   }
   error.style.display = "none";
+
+  const results = simulateManyRuns(runs, itemLevel, target, start, starcatch, safeguard, event30Off, event30BoomRed);
 
   // Basic stats
   document.getElementById("avg-cost").textContent = `Average Cost: ${results.avgCost.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
