@@ -294,12 +294,20 @@ document.getElementById("simulate-button").addEventListener("click", () => {
   const start = parseInt(document.getElementById("start").value);
   const target = parseInt(document.getElementById("target").value);
   const runs = parseInt(document.getElementById("runs").value);
+  const error = document.getElementById("runs-error");
   const starcatch = document.getElementById("starcatch").checked;
   const safeguard = document.getElementById("safeguard").checked;
   const event30Off = document.getElementById("event-30-off").checked;
   const event30BoomRed = document.getElementById("event-30-boom-red").checked;
 
   const results = simulateManyRuns(runs, itemLevel, target, start, starcatch, safeguard, event30Off, event30BoomRed);
+
+  // Run limit check
+  if (runs < 1 || runs > 100000) {
+    error.style.display = "block";
+    return;
+  }
+  error.style.display = "none";
 
   // Basic stats
   document.getElementById("avg-cost").textContent = `Average Cost: ${results.avgCost.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
